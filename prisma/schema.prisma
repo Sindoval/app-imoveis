@@ -1,0 +1,147 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        Int     @id @default(autoincrement())
+  nome      String
+  email     String  @unique
+  senhaHash String
+  ativo     Boolean @default(true)
+
+  roles            UsuarioRole[]
+  investimentos    Investimento[]
+  pedidosCriados   Pedido[]       @relation("PedidosCriados")
+  pedidosAprovados Pedido[]       @relation("PedidosAprovados")
+}
+
+model Role {
+  id       Int           @id @default(autoincrement())
+  nome     String
+  usuarios UsuarioRole[]
+}
+
+model UsuarioRole {
+  id        Int     @id @default(autoincrement())
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  role      Role    @relation(fields: [roleId], references: [id])
+  roleId    Int
+}
+
+model Imovel {
+  id          Int    @id @default(autoincrement())
+  endereco    String
+  cep         String
+  status      String
+  valorCompra Float
+  valorVenda  Float?
+
+  investimentos Investimento[]
+  pedidos       Pedido[]
+}
+
+model Investimento {
+  id        Int      @id @default(autoincrement())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  imovel    Imovel   @relation(fields: [imovelId], references: [id])
+  imovelId  Int
+  valor     Float
+  data      DateTime @default(now())
+}
+
+model Produto {
+  id      Int    @id @default(autoincrement())
+  nome    String
+  unidade String
+
+  estoque            Estoque?
+  itensPedido        PedidoItem[]
+  fornecedorProdutos FornecedorProduto[]
+}
+
+model Estoque {
+  id         Int     @id @default(autoincrement())
+  produto    Produto @relation(fields: [produtoId], references: [id])
+  produtoId  Int     @unique
+  quantidade Int
+}
+
+model Fornecedor {
+  id      Int    @id @default(autoincrement())
+  nome    String
+  cnpj    String
+  contato String
+
+  orcamentos          Orcamento[]
+  produtosDisponiveis FornecedorProduto[]
+}
+
+model FornecedorProduto {
+  id           Int        @id @default(autoincrement())
+  fornecedor   Fornecedor @relation(fields: [fornecedorId], references: [id])
+  fornecedorId Int
+  produto      Produto    @relation(fields: [produtoId], references: [id])
+  produtoId    Int
+  preco        Float
+}
+
+model Pedido {
+  id            Int      @id @default(autoincrement())
+  imovel        Imovel   @relation(fields: [imovelId], references: [id])
+  imovelId      Int
+  criadoPor     Usuario  @relation("PedidosCriados", fields: [criadoPorId], references: [id])
+  criadoPorId   Int
+  aprovadoPor   Usuario? @relation("PedidosAprovados", fields: [aprovadoPorId], references: [id])
+  aprovadoPorId Int?
+  status        String
+
+  itens      PedidoItem[]
+  orcamentos Orcamento[]
+}
+
+model PedidoItem {
+  id         Int     @id @default(autoincrement())
+  pedido     Pedido  @relation(fields: [pedidoId], references: [id])
+  pedidoId   Int
+  produto    Produto @relation(fields: [produtoId], references: [id])
+  produtoId  Int
+  quantidade Int
+
+  orcamentoItens OrcamentoItem[]
+}
+
+model Orcamento {
+  id           Int        @id @default(autoincrement())
+  pedido       Pedido     @relation(fields: [pedidoId], references: [id])
+  pedidoId     Int
+  fornecedor   Fornecedor @relation(fields: [fornecedorId], references: [id])
+  fornecedorId Int
+  status       String
+
+  itens OrcamentoItem[]
+}
+
+model OrcamentoItem {
+  id            Int        @id @default(autoincrement())
+  orcamento     Orcamento  @relation(fields: [orcamentoId], references: [id])
+  orcamentoId   Int
+  pedidoItem    PedidoItem @relation(fields: [pedidoItemId], references: [id])
+  pedidoItemId  Int
+  precoUnitario Float
+  quantidade    Int
+  subtotal      Float
+}
